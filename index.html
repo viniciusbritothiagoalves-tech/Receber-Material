@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Receba seu Material Prático</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <div class="container">
+        
+        <div id="survey-flow">
+            <div class="header">
+                <h1>Receba um material útil preparado para ajudar no seu dia a dia</h1>
+                <div class="image-container">
+                    <img src="imagem-pdf.png" alt="Dicas práticas para facilitar o dia a dia">
+                </div>
+                <p class="intro-text">
+                    Responda esta pesquisa rápida e receba gratuitamente um material com dicas práticas para ajudar na rotina da casa e da família.
+                </p>
+            </div>
+
+            <div class="progress-bar-wrapper">
+                <div class="progress-container">
+                    <div class="progress-bar" id="progress-bar"></div>
+                </div>
+                <div class="progress-text" id="progress-text">Etapa 1 de 4</div>
+            </div>
+
+            <form id="lead-form">
+                
+                <!-- Etapa 1 -->
+                <div class="step active" id="step-1">
+                    <div class="form-group">
+                        <label for="nome">Qual seu primeiro nome?</label>
+                        <input type="text" id="nome" name="nome" placeholder="Digite seu nome" required autocomplete="given-name">
+                        <div class="error-msg" id="error-nome">Por favor, preencha seu nome.</div>
+                    </div>
+                    <button type="button" class="btn" onclick="nextStep(1)">Próximo</button>
+                </div>
+
+                <!-- Etapa 2 -->
+                <div class="step" id="step-2">
+                    <div class="form-group">
+                        <label for="whatsapp">Qual seu WhatsApp?</label>
+                        <input type="tel" id="whatsapp" name="whatsapp" placeholder="Ex: 31 99999-9999" required autocomplete="tel">
+                        <div class="error-msg" id="error-whatsapp">Preencha um número de WhatsApp válido.</div>
+                    </div>
+                    <button type="button" class="btn" onclick="nextStep(2)">Próximo</button>
+                </div>
+
+                <!-- Etapa 3 -->
+                <div class="step" id="step-3">
+                    <div class="form-group">
+                        <label>Qual destas opções mais combina com você hoje?</label>
+                        <div class="radio-group" id="radio-group-3">
+                            <label class="radio-option">
+                                <input type="radio" name="perfil" value="Trabalho registrado" required> Trabalho registrado
+                            </label>
+                            <label class="radio-option">
+                                <input type="radio" name="perfil" value="Trabalho por conta própria"> Trabalho por conta própria
+                            </label>
+                            <label class="radio-option">
+                                <input type="radio" name="perfil" value="Aposentado(a)"> Aposentado(a)
+                            </label>
+                            <label class="radio-option">
+                                <input type="radio" name="perfil" value="Dona de casa"> Dona de casa
+                            </label>
+                            <label class="radio-option">
+                                <input type="radio" name="perfil" value="Outro"> Outro
+                            </label>
+                        </div>
+                        <div class="error-msg" id="error-perfil">Selecione uma das opções acima.</div>
+                    </div>
+                    <!-- Botão removido (Avanço automático) -->
+                </div>
+
+                <!-- Etapa 4 -->
+                <div class="step" id="step-4">
+                    <div class="form-group">
+                        <label>Qual desses assuntos mais ajudaria você hoje?</label>
+                        <div class="radio-group" id="radio-group-4">
+                            <label class="radio-option">
+                                <input type="radio" name="assunto" value="Organização da casa" required> Organização da casa
+                            </label>
+                            <label class="radio-option">
+                                <input type="radio" name="assunto" value="Saúde e bem-estar"> Saúde e bem-estar
+                            </label>
+                            <label class="radio-option">
+                                <input type="radio" name="assunto" value="Economia doméstica"> Economia doméstica
+                            </label>
+                            <label class="radio-option">
+                                <input type="radio" name="assunto" value="Vida familiar"> Vida familiar
+                            </label>
+                            <label class="radio-option">
+                                <input type="radio" name="assunto" value="Cuidados com documentos e contas"> Cuidados com documentos e contas
+                            </label>
+                        </div>
+                        <div class="error-msg" id="error-assunto">Selecione o assunto de maior interesse.</div>
+                    </div>
+                    <!-- Botão removido (Avanço automático) -->
+                </div>
+            </form>
+        </div>
+
+        <div id="final-screen">
+            <h2>Seu material está pronto para ser recebido.</h2>
+            <p>Clique no botão abaixo para baixar agora.</p>
+            <a href="https://drive.google.com/uc?export=download&id=16IdtRx_KtrLqIECYSWAicqgxws5ztHma" class="btn btn-download" id="download-btn" onclick="finalizeLead()">Receber material agora</a>
+        </div>
+
+        <div class="footer-text">
+            Seus dados são usados apenas para envio do material solicitado.
+        </div>
+        
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>

@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard de Leads</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', sans-serif; }
+        body { background-color: #F4F6F8; color: #333; padding: 40px 20px; }
+        .admin-container { max-width: 1000px; margin: 0 auto; background: #FFF; padding: 30px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); }
+        .header-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; }
+        h1 { font-size: 24px; color: #1F1F1F; }
+        .btn-export { background-color: #25D366; color: #FFF; border: none; padding: 10px 20px; font-size: 14px; font-weight: 600; border-radius: 6px; cursor: pointer; text-decoration: none; display: inline-flex; align-items: center; }
+        .btn-export:hover { background-color: #1EBE55; }
+        .table-responsive { overflow-x: auto; }
+        table { width: 100%; border-collapse: collapse; text-align: left; }
+        th, td { padding: 14px; border-bottom: 1px solid #EAEAEA; font-size: 14px; }
+        th { background-color: #F9F9F9; color: #555; font-weight: 600; white-space: nowrap; }
+        tr:hover { background-color: #FDFDFD; }
+        .status-badge { padding: 4px 8px; border-radius: 20px; font-size: 12px; font-weight: 600; }
+        .status-finalizado { background-color: #E8F5E9; color: #2E7D32; }
+        .status-pendente { background-color: #FFF3E0; color: #EF6C00; }
+        .empty-state { text-align: center; padding: 40px; color: #888; font-size: 16px; }
+    </style>
+</head>
+<body>
+
+    <div class="admin-container">
+        <div class="header-row">
+            <h1>Leads Capturados</h1>
+            <div style="display: flex; gap: 10px;">
+                <button onclick="clearAllData()" style="background-color: #D32F2F; color: #FFF; border: none; padding: 10px 20px; font-size: 14px; font-weight: 600; border-radius: 6px; cursor: pointer;">Limpar Tudo</button>
+                <button class="btn-export" style="background-color: #2E7D32;" onclick="exportCSV('finalizados')">Baixar Finalizados</button>
+                <button class="btn-export" style="background-color: #EF6C00;" onclick="exportCSV('incompletos')">Baixar Incompletos</button>
+            </div>
+        </div>
+
+        <div class="table-responsive">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Nome</th>
+                        <th>WhatsApp</th>
+                        <th>Situação Profissional</th>
+                        <th>Interesse Principal</th>
+                        <th>Status</th>
+                        <th>Data</th>
+                        <th>Ações</th>
+                    </tr>
+                </thead>
+                <tbody id="table-body">
+                    <!-- Os dados serão injetados via JS -->
+                </tbody>
+            </table>
+            <div id="empty-state" class="empty-state" style="display: none;">
+                Nenhum lead encontrado ainda. As pessoas que começarem a preencher aparecerão aqui.
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const senha = prompt("Digite a senha de administrador para acessar os dados:");
+            if (senha !== "sapecoutrairasoft65!") {
+                document.body.innerHTML = "<div style='text-align:center; margin-top:100px; font-family:sans-serif;'><h2>Acesso Negado</h2><p>Você não tem permissão para ver esta página.</p><button onclick='location.reload()' style='margin-top:20px; padding:10px 20px; cursor:pointer;'>Tentar Novamente</button></div>";
+                return;
+            }
+            loadData();
+        });
+
+        function loadData() {
+            const leads = JSON.parse(localStorage.getItem('saved_leads')) || [];
+            const tbody = document.getElementById('table-body');
+            const emptyState = document.getElementById('empty-state');
+            
+            if (leads.length === 0) {
+                emptyState.style.display = 'block';
+                return;
+            }
+
+            // Ordena os mais recentes primeiro
+            leads.sort((a,b) => {
+                // Como salvamos uma string de data local, a melhor forma simples de ordenar é reverter se foram inseridos na ordem
+                return -1; // reverte a ordem natural do array
+            });
+
+            // Porém o JS reverse ou sort(-1) pode não funcionar no loop adequadamente, faremos splice reverse na renderização
+            // ou mais fácil, invertemos o array:
+            leads.reverse();
+
+            leads.forEach(lead => {
+                const tr = document.createElement('tr');
+                
+                const isFinalizado = lead.status === 'Finalizado';
+                const statusClass = isFinalizado ? 'status-finalizado' : 'status-pendente';
+
+                tr.innerHTML = `
+                    <td>${lead.nome || '-'}</td>
+                    <td>${lead.whatsapp || '-'}</td>
+                    <td>${lead.perfil || '-'}</td>
+                    <td>${lead.assunto || '-'}</td>
+                    <td><span class="status-badge ${statusClass}">${lead.status}</span></td>
+                    <td>${lead.dataUpdate || '-'}</td>
+                    <td><button onclick="deleteLead('${lead.id}')" style="background:none; border:none; color:#D32F2F; cursor:pointer; font-weight:600; font-size:13px;">Excluir</button></td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function deleteLead(id) {
+            if(confirm("Tem certeza que deseja excluir esse lead individualmente?")) {
+                let allLeads = JSON.parse(localStorage.getItem('saved_leads')) || [];
+                allLeads = allLeads.filter(l => l.id !== id);
+                localStorage.setItem('saved_leads', JSON.stringify(allLeads));
+                document.getElementById('table-body').innerHTML = ''; // Limpa antes de recarregar
+                loadData();
+            }
+        }
+
+        function clearAllData() {
+            if(confirm("ATENÇÃO: Você vai apagar TODOS os leads registrados. Esta ação não pode ser desfeita. Deseja prosseguir?")) {
+                localStorage.removeItem('saved_leads');
+                document.getElementById('table-body').innerHTML = '';
+                loadData();
+                alert("Todos os dados foram apagados com sucesso.");
+            }
+        }
+
+        function exportCSV(type) {
+            let leads = JSON.parse(localStorage.getItem('saved_leads')) || [];
+            
+            // Fazer a separação
+            if (type === 'finalizados') {
+                leads = leads.filter(l => l.status === 'Finalizado');
+            } else if (type === 'incompletos') {
+                leads = leads.filter(l => l.status === 'Não finalizado');
+            }
+
+            if (leads.length === 0) {
+                alert('Nenhum dado com esse filtro disponível para exportar.');
+                return;
+            }
+
+            let csvContent = "Nome;WhatsApp;Situacao Profissional;Interesse Principal;Status;Data\n";
+
+            leads.forEach(lead => {
+                const row = [
+                    `"${lead.nome || ''}"`,
+                    `"${lead.whatsapp || ''}"`,
+                    `"${lead.perfil || ''}"`,
+                    `"${lead.assunto || ''}"`,
+                    `"${lead.status || ''}"`,
+                    `"${lead.dataUpdate || ''}"`
+                ].join(";");
+                csvContent += row + "\n";
+            });
+
+            const universalBOM = "\uFEFF";
+            const blob = new Blob([universalBOM + csvContent], { type: 'text/csv;charset=utf-8;' });
+            
+            const link = document.createElement("a");
+            const url = URL.createObjectURL(blob);
+            link.setAttribute("href", url);
+            
+            // Nome automático dependendo do que ele baixar
+            const fileName = type === 'finalizados' ? 'leads_COMPLETOS' : 'leads_INCOMPLETOS';
+            link.setAttribute("download", `${fileName}_${new Date().getTime()}.csv`);
+            link.style.visibility = 'hidden';
+            
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+    </script>
+</body>
+</html>
