@@ -92,7 +92,49 @@ function validateStep(stepIndex) {
             errorWa.innerText = 'Por favor, insira o DDD e o número com 9 dígitos (total 11 dígitos).';
             isValid = false;
         } else {
-            errorWa.style.display = 'none';
+            // Verifica se este número de celular já consta na base como Finalizado (entregue) e não foi liberado
+            const allLeads = JSON.parse(localStorage.getItem('saved_leads')) || [];
+            const jaRecebeuPdf = allLeads.some(l => {
+                if(!l.whatsapp) return false;
+                const numeroLimpoListado = l.whatsapp.replace(/\D/g, '');
+                return (numeroLimpoListado === wa) && (l.status === 'Finalizado') && (l.liberado !== true);
+            });
+
+            if (jaRecebeuPdf) {
+                errorWa.style.display = 'block';
+                errorWa.innerText = 'Este número já está cadastrado e já recebeu o material anteriormente.';
+                isValid = false;
+
+                // Armazena no log de tentativas bloqueadas e conta tentativas/nomes
+                let blockedLog = JSON.parse(localStorage.getItem('bloqueados_leads')) || [];
+                let existingBlock = blockedLog.find(b => b.whatsapp && b.whatsapp.replace(/\D/g, '') === wa);
+                const nomeDigitado = document.getElementById('nome').value.trim();
+
+                if (existingBlock) {
+                    existingBlock.tentativas = (existingBlock.tentativas || 1) + 1;
+                    existingBlock.dataTentativa = new Date().toLocaleString('pt-BR');
+                    
+                    // Converte para suportar o formato de array de nomes se for retroativo
+                    if (!existingBlock.nomes_tentados) {
+                        existingBlock.nomes_tentados = [existingBlock.nome];
+                    }
+                    
+                    if (nomeDigitado && !existingBlock.nomes_tentados.includes(nomeDigitado)) {
+                        existingBlock.nomes_tentados.push(nomeDigitado);
+                    }
+                } else {
+                    blockedLog.push({
+                        nomes_tentados: [nomeDigitado],
+                        nome: nomeDigitado,
+                        whatsapp: document.getElementById('whatsapp').value,
+                        dataTentativa: new Date().toLocaleString('pt-BR'),
+                        tentativas: 1
+                    });
+                }
+                localStorage.setItem('bloqueados_leads', JSON.stringify(blockedLog));
+            } else {
+                errorWa.style.display = 'none';
+            }
         }
     }
     else if (stepIndex === 3) {

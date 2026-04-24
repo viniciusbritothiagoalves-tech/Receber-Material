@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard de Bloqueados</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', sans-serif; }
+        body { background-color: #F4F6F8; color: #333; padding: 40px 20px; }
+        .admin-container { max-width: 1000px; margin: 0 auto; background: #FFF; padding: 30px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); }
+        .header-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; }
+        h1 { font-size: 24px; color: #1F1F1F; }
+        p.subtitle { color: #555; margin-bottom: 20px; font-size: 14px; }
+        .btn-export { background-color: #000; color: #FFF; border: none; padding: 10px 20px; font-size: 14px; font-weight: 600; border-radius: 6px; cursor: pointer; text-decoration: none; display: inline-flex; align-items: center; }
+        .btn-export:hover { background-color: #333; }
+        .table-responsive { overflow-x: auto; }
+        table { width: 100%; border-collapse: collapse; text-align: left; }
+        th, td { padding: 14px; border-bottom: 1px solid #EAEAEA; font-size: 14px; }
+        th { background-color: #F9F9F9; color: #555; font-weight: 600; white-space: nowrap; }
+        tr:hover { background-color: #FDFDFD; }
+        .empty-state { text-align: center; padding: 40px; color: #888; font-size: 16px; }
+    </style>
+</head>
+<body>
+
+    <div class="admin-container">
+        <div class="header-row">
+            <div>
+                <h1>Leads Bloqueados (Tentativas Repetidas)</h1>
+                <p class="subtitle">Lista de pessoas que tentaram fazer o cadastro novamente mas já haviam recebido o PDF. Aqui você tem o controle para liberá-las.</p>
+            </div>
+            <div style="display: flex; gap: 10px;">
+                <button onclick="clearAllBloqueados()" style="background-color: #D32F2F; color: #FFF; border: none; padding: 10px 20px; font-size: 14px; font-weight: 600; border-radius: 6px; cursor: pointer;">Limpar Histórico</button>
+                <button class="btn-export" onclick="exportCSV()">Exportar Lista</button>
+            </div>
+        </div>
+
+        <div class="table-responsive">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Cidadão (Nomes já tentados)</th>
+                        <th>WhatsApp Bloqueado</th>
+                        <th>Qtd. Tentativas</th>
+                        <th>Última Tentativa</th>
+                        <th>Ações / Controle</th>
+                    </tr>
+                </thead>
+                <tbody id="table-body">
+                    <!-- Os dados serão injetados via JS -->
+                </tbody>
+            </table>
+            <div id="empty-state" class="empty-state" style="display: none;">
+                Nenhum bloqueio registrado.
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const senha = prompt("Acesso Restrito: Digite a senha para acessar a lista de bloqueados:");
+            if (senha !== "sapecoutrairasoft65!") {
+                document.body.innerHTML = "<div style='text-align:center; margin-top:100px; font-family:sans-serif;'><h2>Acesso Negado</h2><button onclick='location.reload()' style='margin-top:20px; padding:10px 20px; cursor:pointer;'>Tentar Novamente</button></div>";
+                return;
+            }
+            loadData();
+        });
+
+        function loadData() {
+            const blockedLeads = JSON.parse(localStorage.getItem('bloqueados_leads')) || [];
+            const tbody = document.getElementById('table-body');
+            const emptyState = document.getElementById('empty-state');
+            
+            tbody.innerHTML = '';
+            
+            if (blockedLeads.length === 0) {
+                emptyState.style.display = 'block';
+                return;
+            } else {
+                emptyState.style.display = 'none';
+            }
+
+            blockedLeads.reverse();
+
+            blockedLeads.forEach((lead, index) => {
+                const nomesHtml = lead.nomes_tentados ? lead.nomes_tentados.join(' <br> ') : (lead.nome || '-');
+                const qtd = lead.tentativas || 1;
+                
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${nomesHtml}</td>
+                    <td>${lead.whatsapp}</td>
+                    <td><span style="background-color:#ffebee; color:#c62828; font-weight:700; padding:4px 8px; border-radius:12px;">${qtd}x</span></td>
+                    <td>${lead.dataTentativa}</td>
+                    <td>
+                        <button onclick="liberarNumero('${lead.whatsapp}')" style="background-color:#25D366; color:#fff; border:none; padding:6px 12px; border-radius:4px; font-weight:600; cursor:pointer;">Liberar Número</button>
+                        <button onclick="excluirRow(${index})" style="background:none; border:none; color:#D32F2F; margin-left:10px; cursor:pointer; font-weight:600; font-size:13px;">Remover do Histórico</button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function liberarNumero(whatsapp) {
+            if(confirm("Confirma que deseja liberar este número? Ele poderá acessar a página e baixar PDF novamente.")) {
+                
+                // 1. Vai nos saved_leads (banco de dados real) e seta liberado = true para quem tem esse Zap
+                let allLeads = JSON.parse(localStorage.getItem('saved_leads')) || [];
+                const apenasNumerosWa = whatsapp.replace(/\\D/g, '');
+                
+                allLeads = allLeads.map(l => {
+                    const limpo = l.whatsapp ? l.whatsapp.replace(/\\D/g, '') : '';
+                    if (limpo === apenasNumerosWa && l.status === 'Finalizado') {
+                        l.liberado = true; // Seta a TAG de passe livre!
+                    }
+                    return l;
+                });
+                localStorage.setItem('saved_leads', JSON.stringify(allLeads));
+
+                // 2. Tira ele também do histórico de bloqueados na tela
+                let blockedLeads = JSON.parse(localStorage.getItem('bloqueados_leads')) || [];
+                blockedLeads = blockedLeads.filter(b => b.whatsapp.replace(/\\D/g, '') !== apenasNumerosWa);
+                localStorage.setItem('bloqueados_leads', JSON.stringify(blockedLeads));
+                
+                alert("Número Liberado com sucesso! O visitante já pode preencher o cadastro livremente.");
+                loadData();
+            }
+        }
+
+        function excluirRow(realIndexFromReversedId) {
+            // Remocao só do historico
+            if(confirm("Deseja apagar esse registro apenas deste histórico?")) {
+                let blockedLeads = JSON.parse(localStorage.getItem('bloqueados_leads')) || [];
+                blockedLeads.reverse(); // para bater o index
+                blockedLeads.splice(realIndexFromReversedId, 1);
+                blockedLeads.reverse();
+                localStorage.setItem('bloqueados_leads', JSON.stringify(blockedLeads));
+                loadData();
+            }
+        }
+
+        function clearAllBloqueados() {
+            if(confirm("ATENÇÃO: Você deseja apagar TODOS os registros que ficam amostra nesta tela?")) {
+                localStorage.removeItem('bloqueados_leads');
+                loadData();
+            }
+        }
+
+        function exportCSV() {
+            const blockedLeads = JSON.parse(localStorage.getItem('bloqueados_leads')) || [];
+            if (blockedLeads.length === 0) {
+                alert('Nenhum dado para exportar.');
+                return;
+            }
+
+            let csvContent = "Nomes Tentados;WhatsApp Bloqueado;Qtd Tentativas;Ultima Data\n";
+            blockedLeads.forEach(lead => {
+                const nomesStr = lead.nomes_tentados ? lead.nomes_tentados.join(' | ') : (lead.nome || '');
+                const qtd = lead.tentativas || 1;
+                const row = [
+                    `"${nomesStr}"`,
+                    `"${lead.whatsapp || ''}"`,
+                    `"${qtd}"`,
+                    `"${lead.dataTentativa || ''}"`
+                ].join(";");
+                csvContent += row + "\n";
+            });
+
+            const universalBOM = "\uFEFF";
+            const blob = new Blob([universalBOM + csvContent], { type: 'text/csv;charset=utf-8;' });
+            
+            const link = document.createElement("a");
+            const url = URL.createObjectURL(blob);
+            link.setAttribute("href", url);
+            link.setAttribute("download", `tentativas_bloqueadas_${new Date().getTime()}.csv`);
+            link.style.visibility = 'hidden';
+            
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+    </script>
+</body>
+</html>
