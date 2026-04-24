@@ -200,9 +200,17 @@ function submitForm() {
     }
 }
 
-function finalizeLead() {
+function finalizeLead(event) {
+    if (event) {
+        event.preventDefault(); // Impede o clique de derrubar a página instantaneamente
+    }
     // Altera o status para "Finalizado" pois efetivamente clicou no download
     saveData(true);
+    
+    // Garantia dupla: Após salvar, redireciona o usuário programaticamente para a isca original.
+    setTimeout(() => {
+        window.location.href = document.getElementById('download-btn').href;
+    }, 350);
 }
 
 function setupAutoSave() {
