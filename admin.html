@@ -45,6 +45,7 @@
                         <th>WhatsApp</th>
                         <th>Situação Profissional</th>
                         <th>Interesse Principal</th>
+                        <th>Origem (Vídeo)</th>
                         <th>Data</th>
                         <th>Ações / Visibilidade</th>
                     </tr>
@@ -115,6 +116,7 @@
                         <td>${lead.whatsapp || '-'}</td>
                         <td>${lead.perfil || '-'}</td>
                         <td>${lead.assunto || '-'}</td>
+                        <td>${lead.origem || '-'}</td>
                         <td>${lead.dataUpdate || '-'}</td>
                         <td><button onclick="deleteLead('${lead.uid}')" style="background:none; border:none; color:#D32F2F; cursor:pointer; font-weight:600; font-size:13px;">Ocultar</button></td>
                     `;
@@ -163,7 +165,7 @@
                     return;
                 }
 
-                let csvContent = "Nome;WhatsApp;Situacao Profissional;Interesse Principal;Data\n";
+                let csvContent = "Nome;WhatsApp;Situacao Profissional;Interesse Principal;Origem;Data\n";
 
                 leads.forEach(lead => {
                     const row = [
@@ -171,6 +173,7 @@
                         `"${lead.whatsapp || ''}"`,
                         `"${lead.perfil || ''}"`,
                         `"${lead.assunto || ''}"`,
+                        `"${lead.origem || ''}"`,
                         `"${lead.dataUpdate || ''}"`
                     ].join(";");
                     csvContent += row + "\n";
