@@ -100,7 +100,7 @@ async function validateStepAsync(stepIndex) {
         btn.disabled = true;
 
         try {
-            // VARREDURA MUNDIAL NO FIREBASE
+            // VARREDURA MUNDIAL NO FIREBASE - TENTATIVA 1 (Na lista principal)
             const snapshot = await db.collection("leads").where("whatsappLimpo", "==", wa).get();
             let jaRecebeuPdf = false;
             
@@ -110,6 +110,15 @@ async function validateStepAsync(stepIndex) {
                     jaRecebeuPdf = true;
                 }
             });
+
+            // VARREDURA MUNDIAL - TENTATIVA 2 (Se o dono tiver apagado o lead da lista original sem querer no passado, mas o nome estiver cravado na lista negra)
+            if (!jaRecebeuPdf) {
+                const snapshotBlockedList = await db.collection("bloqueados").where("whatsappLimpo", "==", wa).get();
+                if (!snapshotBlockedList.empty) {
+                    // Está na cadeia de bloqueados e não foi liberado ainda! Trava ele.
+                    jaRecebeuPdf = true;
+                }
+            }
 
             if (jaRecebeuPdf) {
                 errorWa.style.display = 'block';
