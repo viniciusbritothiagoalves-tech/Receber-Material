@@ -4,6 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard de Abandonos (Quente)</title>
+    <!-- Firebase SDK Compat -->
+    <script src="https://www.gstatic.com/firebasejs/10.9.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.9.0/firebase-firestore-compat.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', sans-serif; }
@@ -19,17 +22,15 @@
         th, td { padding: 14px; border-bottom: 1px solid #EAEAEA; font-size: 14px; }
         th { background-color: #F9F9F9; color: #555; font-weight: 600; white-space: nowrap; }
         tr:hover { background-color: #FDFDFD; }
-        .status-badge { padding: 4px 8px; border-radius: 20px; font-size: 12px; font-weight: 600; background-color: #FFF3E0; color: #EF6C00; }
         .empty-state { text-align: center; padding: 40px; color: #888; font-size: 16px; }
     </style>
 </head>
 <body>
-
     <div class="admin-container">
         <div class="header-row">
             <div>
-                <h1>Leads de Abandono (Quentes)</h1>
-                <p class="subtitle">Lista de pessoas que preencheram Nome, WhatsApp, responderam a Situação Profissional, mas fecharam a página na última pergunta.</p>
+                <h1>Leads de Abandono (Nuvem)</h1>
+                <p class="subtitle">Lista de leads que responderam tudo, mas fecharam a página na entrega.</p>
             </div>
             <div style="display: flex; gap: 10px;">
                 <button onclick="clearAllAbandonos()" style="background-color: #D32F2F; color: #FFF; border: none; padding: 10px 20px; font-size: 14px; font-weight: 600; border-radius: 6px; cursor: pointer;">Limpar Abandonos</button>
@@ -50,101 +51,119 @@
                     </tr>
                 </thead>
                 <tbody id="table-body">
-                    <!-- Os dados serão injetados via JS -->
                 </tbody>
             </table>
             <div id="empty-state" class="empty-state" style="display: none;">
-                Nenhum lead com esse perfil encontrado no momento.
+                Nenhum lead com esse perfil encontrado no servidor.
             </div>
         </div>
     </div>
 
     <script>
+        const firebaseConfig = {
+          apiKey: "AIzaSyCsX45PPj_PZU8_FkybSWEv44IUo3SvLQc",
+          authDomain: "contatos---pesquisa-yt.firebaseapp.com",
+          projectId: "contatos---pesquisa-yt",
+          storageBucket: "contatos---pesquisa-yt.firebasestorage.app",
+          messagingSenderId: "826368789470",
+          appId: "1:826368789470:web:a2638727e55a9af8736b4f"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+
         document.addEventListener('DOMContentLoaded', () => {
             const senha = prompt("Acesso Restrito: Digite a senha para acessar a lista de abandonos:");
             if (senha !== "sapecoutrairasoft65!") {
-                document.body.innerHTML = "<div style='text-align:center; margin-top:100px; font-family:sans-serif;'><h2>Acesso Negado</h2><button onclick='location.reload()' style='margin-top:20px; padding:10px 20px; cursor:pointer;'>Tentar Novamente</button></div>";
+                document.body.innerHTML = "<div style='text-align:center; margin-top:100px;'><h2>Acesso Negado</h2></div>";
                 return;
             }
             loadData();
         });
 
-        // Função para filtrar os dados específicos
-        function getFilteredLeads() {
-            const allLeads = JSON.parse(localStorage.getItem('saved_leads')) || [];
-            
-            // Filtro exigido: Status "Não finalizado" E tem de ter Nome E tem de ter Whatsapp E tem de ter a Pergunta 3 respondida
-            return allLeads.filter(lead => {
-                return lead.status === 'Não finalizado' && 
-                       lead.perfil !== '' && 
-                       lead.nome !== '' && 
-                       lead.whatsapp !== '';
-            });
-        }
-
-        function loadData() {
-            const filteredLeads = getFilteredLeads();
+        async function loadData() {
             const tbody = document.getElementById('table-body');
             const emptyState = document.getElementById('empty-state');
             
-            if (filteredLeads.length === 0) {
-                emptyState.style.display = 'block';
-                return;
-            }
-
-            // Inverte array para mostrar os mais novos (fundo da lista orginal) no topo
-            filteredLeads.reverse();
-
-            filteredLeads.forEach(lead => {
-                const tr = document.createElement('tr');
-                tr.innerHTML = `
-                    <td>${lead.nome}</td>
-                    <td>${lead.whatsapp}</td>
-                    <td>${lead.perfil}</td>
-                    <td>${lead.assunto || '<span style="color:#aaa;">Não respondeu</span>'}</td>
-                    <td>${lead.dataUpdate || '-'}</td>
-                    <td><button onclick="deleteLead('${lead.id}')" style="background:none; border:none; color:#D32F2F; cursor:pointer; font-weight:600; font-size:13px;">Excluir</button></td>
-                `;
-                tbody.appendChild(tr);
-            });
-        }
-
-        function deleteLead(id) {
-            if(confirm("Tem certeza que deseja excluir esse lead abandonado individualmente?")) {
-                let allLeads = JSON.parse(localStorage.getItem('saved_leads')) || [];
-                allLeads = allLeads.filter(l => l.id !== id);
-                localStorage.setItem('saved_leads', JSON.stringify(allLeads));
-                document.getElementById('table-body').innerHTML = ''; // Limpa a UI
-                loadData();
-            }
-        }
-
-        function clearAllAbandonos() {
-            if(confirm("ATENÇÃO: Você deseja apagar TODOS os leads classificados como abandono listados aqui? (Os finalizados permanecerão intactos)")) {
-                let allLeads = JSON.parse(localStorage.getItem('saved_leads')) || [];
+            tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;">Buscando abandonos no Firebase...</td></tr>';
+            
+            try {
+                // Filtramos diretamente por 'Não finalizado'
+                const snapshot = await db.collection("leads").where("status", "==", "Não finalizado").get();
+                let filteredLeads = [];
                 
-                // Filtra para mander APENAS aqueles que NÃO se encaixam como abandono quente
-                allLeads = allLeads.filter(lead => {
-                    const isAbandono = (lead.status === 'Não finalizado' && lead.perfil !== '' && lead.nome !== '' && lead.whatsapp !== '');
-                    return !isAbandono;
+                snapshot.forEach(doc => {
+                    const lead = { uid: doc.id, ...doc.data() };
+                    // Completa o filtro rigoroso do abandono (tem perfis respondidos)
+                    if (lead.perfil !== '' && lead.nome !== '' && lead.whatsapp !== '') {
+                        filteredLeads.push(lead);
+                    }
                 });
                 
-                localStorage.setItem('saved_leads', JSON.stringify(allLeads));
-                document.getElementById('table-body').innerHTML = '';
-                loadData();
-                alert("Os abandonos foram apagados com sucesso.");
+                tbody.innerHTML = '';
+                
+                if (filteredLeads.length === 0) {
+                    emptyState.style.display = 'block';
+                    return;
+                } else {
+                    emptyState.style.display = 'none';
+                }
+
+                filteredLeads.reverse();
+
+                filteredLeads.forEach(lead => {
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td>${lead.nome}</td>
+                        <td>${lead.whatsapp}</td>
+                        <td>${lead.perfil}</td>
+                        <td>${lead.assunto || '<span style="color:#aaa;">Não respondeu</span>'}</td>
+                        <td>${lead.dataUpdate || '-'}</td>
+                        <td><button onclick="deleteLead('${lead.uid}')" style="background:none; border:none; color:#D32F2F; cursor:pointer; font-weight:600; font-size:13px;">Excluir</button></td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            } catch(e) {
+                tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:red;">Falha de comunicação com o servidor.</td></tr>';
             }
         }
 
-        function exportCSV() {
-            const filteredLeads = getFilteredLeads();
+        async function deleteLead(uid) {
+            if(confirm("Deseja excluir esse lead abandonado da nuvem do Google de vez?")) {
+                await db.collection("leads").doc(uid).delete();
+                loadData();
+            }
+        }
+
+        async function clearAllAbandonos() {
+            if(confirm("ATENÇÃO: Deseja purgar apenas os abandonos quentes da base (os Leads completos estarão a salvo)?")) {
+                const snapshot = await db.collection("leads").where("status", "==", "Não finalizado").get();
+                snapshot.forEach(doc => {
+                    const lead = doc.data();
+                    if (lead.perfil !== '' && lead.nome !== '' && lead.whatsapp !== '') {
+                        doc.ref.delete();
+                    }
+                });
+                alert("Limpeza dos abandonos executada.");
+                loadData();
+            }
+        }
+
+        async function exportCSV() {
+            const snapshot = await db.collection("leads").where("status", "==", "Não finalizado").get();
+            let filteredLeads = [];
+            snapshot.forEach(doc => {
+                const lead = doc.data();
+                if (lead.perfil !== '' && lead.nome !== '' && lead.whatsapp !== '') {
+                    filteredLeads.push(lead);
+                }
+            });
+
             if (filteredLeads.length === 0) {
-                alert('Nenhum dado para exportar.');
+                alert('Nenhum dado na nuvem para exportar.');
                 return;
             }
 
             let csvContent = "Nome;WhatsApp;Situacao Profissional;Interesse Principal;Data\n";
-
             filteredLeads.forEach(lead => {
                 const row = [
                     `"${lead.nome || ''}"`,
@@ -158,13 +177,11 @@
 
             const universalBOM = "\uFEFF";
             const blob = new Blob([universalBOM + csvContent], { type: 'text/csv;charset=utf-8;' });
-            
             const link = document.createElement("a");
             const url = URL.createObjectURL(blob);
             link.setAttribute("href", url);
             link.setAttribute("download", `abandonos_quentes_${new Date().getTime()}.csv`);
             link.style.visibility = 'hidden';
-            
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);

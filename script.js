@@ -1,16 +1,15 @@
-document.addEventListener("DOMContentLoaded", () => {
-    // Inicialização
-    initSessionId();
-    setupRadioButtons();
-    setupWhatsAppMask();
-    setupAutoSave();
-    
-    // Auto focus na etapa 1
-    setTimeout(() => {
-        const firstInput = document.getElementById('nome');
-        if(firstInput) firstInput.focus();
-    }, 100);
-});
+// INICIALIZAÇÃO DO FIREBASE (Sua Chave Mestra)
+const firebaseConfig = {
+  apiKey: "AIzaSyCsX45PPj_PZU8_FkybSWEv44IUo3SvLQc",
+  authDomain: "contatos---pesquisa-yt.firebaseapp.com",
+  projectId: "contatos---pesquisa-yt",
+  storageBucket: "contatos---pesquisa-yt.firebasestorage.app",
+  messagingSenderId: "826368789470",
+  appId: "1:826368789470:web:a2638727e55a9af8736b4f"
+};
+// Conecta seu site ao servidor global
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
 
 let currentSessionId = null;
 
@@ -24,53 +23,53 @@ function getSessionId() {
     return currentSessionId;
 }
 
-// Configurar rádio botões visuais
+document.addEventListener("DOMContentLoaded", () => {
+    initSessionId();
+    setupRadioButtons();
+    setupWhatsAppMask();
+    
+    setTimeout(() => {
+        const firstInput = document.getElementById('nome');
+        if(firstInput) firstInput.focus();
+    }, 100);
+});
+
 function setupRadioButtons() {
     const radioOptions = document.querySelectorAll('.radio-option');
     radioOptions.forEach(option => {
         const input = option.querySelector('input[type="radio"]');
         input.addEventListener('change', () => {
-            // Remove 'selected' class from siblings
             const siblings = option.closest('.radio-group').querySelectorAll('.radio-option');
             siblings.forEach(sib => sib.classList.remove('selected'));
             
-            // Add 'selected' to current
             if (input.checked) {
                 option.classList.add('selected');
             }
-            saveData(false); // Auto-save when radio changes
             
-            // Avanço automático após 250ms de clicar na opção
-            setTimeout(() => {
+            // Avanço Automático via Nuvem
+            setTimeout(async () => {
                 const step = option.closest('.step');
                 if (step.id === 'step-3') {
-                    nextStep(3);
+                    await nextStep(3);
                 } else if (step.id === 'step-4') {
-                    submitForm();
+                    await submitForm();
                 }
             }, 250);
         });
     });
 }
 
-// Máscara e validação do WhatsApp
 function setupWhatsAppMask() {
     const waInput = document.getElementById('whatsapp');
     if(waInput) {
         waInput.addEventListener('input', function(e) {
             let x = e.target.value.replace(/\D/g, '').substring(0, 11).match(/(\d{0,2})(\d{0,5})(\d{0,4})/);
             e.target.value = !x[2] ? x[1] : '(' + x[1] + ') ' + x[2] + (x[3] ? '-' + x[3] : '');
-            saveData(false); // Auto-save on digit change
         });
-    }
-    
-    const nomeInput = document.getElementById('nome');
-    if (nomeInput) {
-        nomeInput.addEventListener('input', () => saveData(false));
     }
 }
 
-function validateStep(stepIndex) {
+async function validateStepAsync(stepIndex) {
     let isValid = true;
     
     if (stepIndex === 1) {
@@ -86,55 +85,68 @@ function validateStep(stepIndex) {
     else if (stepIndex === 2) {
         const wa = document.getElementById('whatsapp').value.replace(/\D/g, '');
         const errorWa = document.getElementById('error-whatsapp');
-        // OBRIGATORIAMENTE 11 dígitos (2 do DDD + 9 do número)
+        
         if (wa.length !== 11) {
             errorWa.style.display = 'block';
             errorWa.innerText = 'Por favor, insira o DDD e o número com 9 dígitos (total 11 dígitos).';
-            isValid = false;
-        } else {
-            // Verifica se este número de celular já consta na base como Finalizado (entregue) e não foi liberado
-            const allLeads = JSON.parse(localStorage.getItem('saved_leads')) || [];
-            const jaRecebeuPdf = allLeads.some(l => {
-                if(!l.whatsapp) return false;
-                const numeroLimpoListado = l.whatsapp.replace(/\D/g, '');
-                return (numeroLimpoListado === wa) && (l.status === 'Finalizado') && (l.liberado !== true);
+            return false;
+        } 
+        
+        // Botão visual enquanto checa o Firebase globalmente!
+        const btn = document.querySelector('#step-2 .btn');
+        const oldText = btn.innerText;
+        btn.innerText = 'Consultando...';
+        btn.disabled = true;
+
+        try {
+            // VARREDURA MUNDIAL NO FIREBASE
+            const snapshot = await db.collection("leads").where("whatsappLimpo", "==", wa).get();
+            let jaRecebeuPdf = false;
+            
+            snapshot.forEach(doc => {
+                const l = doc.data();
+                if (l.status === 'Finalizado' && l.liberado !== true) {
+                    jaRecebeuPdf = true;
+                }
             });
 
             if (jaRecebeuPdf) {
                 errorWa.style.display = 'block';
                 errorWa.innerText = 'Este número já está cadastrado e já recebeu o material anteriormente.';
                 isValid = false;
-
-                // Armazena no log de tentativas bloqueadas e conta tentativas/nomes
-                let blockedLog = JSON.parse(localStorage.getItem('bloqueados_leads')) || [];
-                let existingBlock = blockedLog.find(b => b.whatsapp && b.whatsapp.replace(/\D/g, '') === wa);
-                const nomeDigitado = document.getElementById('nome').value.trim();
-
-                if (existingBlock) {
-                    existingBlock.tentativas = (existingBlock.tentativas || 1) + 1;
-                    existingBlock.dataTentativa = new Date().toLocaleString('pt-BR');
-                    
-                    // Converte para suportar o formato de array de nomes se for retroativo
-                    if (!existingBlock.nomes_tentados) {
-                        existingBlock.nomes_tentados = [existingBlock.nome];
-                    }
-                    
-                    if (nomeDigitado && !existingBlock.nomes_tentados.includes(nomeDigitado)) {
-                        existingBlock.nomes_tentados.push(nomeDigitado);
-                    }
-                } else {
-                    blockedLog.push({
-                        nomes_tentados: [nomeDigitado],
-                        nome: nomeDigitado,
+                
+                // Grava a tentativa de reentrada perigosa na grade do bloqueados
+                const snapshotBlocked = await db.collection("bloqueados").where("whatsappLimpo", "==", wa).get();
+                if (snapshotBlocked.empty) {
+                    await db.collection("bloqueados").add({
+                        nomes_tentados: [document.getElementById('nome').value.trim()],
                         whatsapp: document.getElementById('whatsapp').value,
-                        dataTentativa: new Date().toLocaleString('pt-BR'),
-                        tentativas: 1
+                        whatsappLimpo: wa,
+                        tentativas: 1,
+                        dataTentativa: new Date().toLocaleString('pt-BR')
+                    });
+                } else {
+                    snapshotBlocked.forEach(async (docBlocked) => {
+                        let bData = docBlocked.data();
+                        let nms = bData.nomes_tentados || [bData.nome];
+                        const nn = document.getElementById('nome').value.trim();
+                        if (nn && !nms.includes(nn)) nms.push(nn);
+                        await db.collection("bloqueados").doc(docBlocked.id).update({
+                            tentativas: (bData.tentativas || 1) + 1,
+                            nomes_tentados: nms,
+                            dataTentativa: new Date().toLocaleString('pt-BR')
+                        });
                     });
                 }
-                localStorage.setItem('bloqueados_leads', JSON.stringify(blockedLog));
             } else {
                 errorWa.style.display = 'none';
             }
+        } catch(e) {
+             console.error("Erro na validação do servidor em nuvem: ", e);
+             // Em caso extraordinário de cabo submarino desconectado etc, permite fluxo.
+        } finally {
+             btn.innerText = oldText;
+             btn.disabled = false;
         }
     }
     else if (stepIndex === 3) {
@@ -161,24 +173,48 @@ function validateStep(stepIndex) {
     return isValid;
 }
 
-function nextStep(currentStepIndex) {
-    if (validateStep(currentStepIndex)) {
-        // Salvar dados no localStorage
-        saveData(false);
+// SALVA NA NUVEM!
+async function saveDataToFirebase(isFinal) {
+    const sessionId = getSessionId();
+    const nome = document.getElementById('nome') ? document.getElementById('nome').value.trim() : '';
+    const whatsapp = document.getElementById('whatsapp') ? document.getElementById('whatsapp').value : '';
+    const waLimpo = whatsapp.replace(/\D/g, '');
+    const perfilEl = document.querySelector('input[name="perfil"]:checked');
+    const assuntoEl = document.querySelector('input[name="assunto"]:checked');
+    
+    const data = {
+        nome: nome,
+        whatsapp: whatsapp,
+        whatsappLimpo: waLimpo,
+        perfil: perfilEl ? perfilEl.value : '',
+        assunto: assuntoEl ? assuntoEl.value : '',
+        status: isFinal ? 'Finalizado' : 'Não finalizado',
+        dataUpdate: new Date().toLocaleString('pt-BR')
+    };
+
+    if (nome !== '' || whatsapp !== '') {
+        try {
+            await db.collection("leads").doc(sessionId).set(data, { merge: true });
+        } catch(e) {
+            console.error("Sem internet celular", e);
+        }
+    }
+}
+
+async function nextStep(currentStepIndex) {
+    const isValid = await validateStepAsync(currentStepIndex);
+    if (isValid) {
+        // Envia para as nuvens
+        await saveDataToFirebase(false);
         
-        // Hide current step
         document.getElementById(`step-${currentStepIndex}`).classList.remove('active');
-        
-        // Show next step
         const nextStepIndex = currentStepIndex + 1;
         document.getElementById(`step-${nextStepIndex}`).classList.add('active');
         
-        // Update Progress
         const percent = (nextStepIndex / 4) * 100;
         document.getElementById('progress-bar').style.width = `${percent}%`;
         document.getElementById('progress-text').innerText = `Etapa ${nextStepIndex} de 4`;
         
-        // Focus the first input of the new step
         setTimeout(() => {
             if (nextStepIndex === 2) {
                 document.getElementById('whatsapp').focus();
@@ -187,67 +223,28 @@ function nextStep(currentStepIndex) {
     }
 }
 
-function submitForm() {
-    if (validateStep(4)) {
-        // Mantém como "Não finalizado" por enquanto
-        saveData(false);
+async function submitForm() {
+    const isValid = await validateStepAsync(4);
+    if (isValid) {
+        await saveDataToFirebase(false);
         
-        // Esconder formulário todo e o texto inicial
         document.getElementById('survey-flow').style.display = 'none';
-        
-        // Mostrar tela de sucesso
         document.getElementById('final-screen').style.display = 'block';
     }
 }
 
+// Fim de fluxo! 
 function finalizeLead(event) {
     if (event) {
-        event.preventDefault(); // Impede o clique de derrubar a página instantaneamente
+        event.preventDefault();
     }
-    // Altera o status para "Finalizado" pois efetivamente clicou no download
-    saveData(true);
     
-    // Garantia dupla: Após salvar, redireciona o usuário programaticamente para a isca original.
-    setTimeout(() => {
-        window.location.href = document.getElementById('download-btn').href;
-    }, 350);
-}
-
-function setupAutoSave() {
-    // Os eventos de input e change já chamam saveData(false)
-}
-
-function saveData(isFinal) {
-    const sessionId = getSessionId();
-    const nome = document.getElementById('nome') ? document.getElementById('nome').value.trim() : '';
-    const whatsapp = document.getElementById('whatsapp') ? document.getElementById('whatsapp').value : '';
-    const perfilEl = document.querySelector('input[name="perfil"]:checked');
-    const assuntoEl = document.querySelector('input[name="assunto"]:checked');
+    const urlPdf = document.getElementById('download-btn').href;
     
-    const data = {
-        id: sessionId,
-        nome: nome,
-        whatsapp: whatsapp,
-        perfil: perfilEl ? perfilEl.value : '',
-        assunto: assuntoEl ? assuntoEl.value : '',
-        status: isFinal ? 'Finalizado' : 'Não finalizado',
-        dataUpdate: new Date().toLocaleString('pt-BR')
-    };
-
-    // Lê os leads do LocalStorage
-    let leads = JSON.parse(localStorage.getItem('saved_leads')) || [];
-    
-    // Procura se esse lead já existe
-    const existingIndex = leads.findIndex(l => l.id === sessionId);
-    
-    // Só salva se houver pelo menos nome ou zap preenchido
-    if (data.nome !== '' || data.whatsapp !== '') {
-        if (existingIndex >= 0) {
-            leads[existingIndex] = data; // atualiza
-        } else {
-            leads.push(data); // insere novo
-        }
-        
-        localStorage.setItem('saved_leads', JSON.stringify(leads));
-    }
+    // Assegura carimbo FINISHED oficial na nuvem!
+    saveDataToFirebase(true).then(() => {
+        window.location.href = urlPdf;
+    }).catch(() => {
+        window.location.href = urlPdf;
+    });
 }

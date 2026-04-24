@@ -4,6 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard de Bloqueados</title>
+    <!-- Firebase SDK Compat -->
+    <script src="https://www.gstatic.com/firebasejs/10.9.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.9.0/firebase-firestore-compat.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', sans-serif; }
@@ -23,12 +26,11 @@
     </style>
 </head>
 <body>
-
     <div class="admin-container">
         <div class="header-row">
             <div>
-                <h1>Leads Bloqueados (Tentativas Repetidas)</h1>
-                <p class="subtitle">Lista de pessoas que tentaram fazer o cadastro novamente mas já haviam recebido o PDF. Aqui você tem o controle para liberá-las.</p>
+                <h1>Tentativas Bloqueadas (Nuvem)</h1>
+                <p class="subtitle">Lista unificada de bloqueios ocorridos em todos os navegadores/aparelhos.</p>
             </div>
             <div style="display: flex; gap: 10px;">
                 <button onclick="clearAllBloqueados()" style="background-color: #D32F2F; color: #FFF; border: none; padding: 10px 20px; font-size: 14px; font-weight: 600; border-radius: 6px; cursor: pointer;">Limpar Histórico</button>
@@ -48,107 +50,121 @@
                     </tr>
                 </thead>
                 <tbody id="table-body">
-                    <!-- Os dados serão injetados via JS -->
                 </tbody>
             </table>
             <div id="empty-state" class="empty-state" style="display: none;">
-                Nenhum bloqueio registrado.
+                Nenhum bloqueio registrado no servidor.
             </div>
         </div>
     </div>
 
     <script>
+        const firebaseConfig = {
+          apiKey: "AIzaSyCsX45PPj_PZU8_FkybSWEv44IUo3SvLQc",
+          authDomain: "contatos---pesquisa-yt.firebaseapp.com",
+          projectId: "contatos---pesquisa-yt",
+          storageBucket: "contatos---pesquisa-yt.firebasestorage.app",
+          messagingSenderId: "826368789470",
+          appId: "1:826368789470:web:a2638727e55a9af8736b4f"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+
         document.addEventListener('DOMContentLoaded', () => {
             const senha = prompt("Acesso Restrito: Digite a senha para acessar a lista de bloqueados:");
             if (senha !== "sapecoutrairasoft65!") {
-                document.body.innerHTML = "<div style='text-align:center; margin-top:100px; font-family:sans-serif;'><h2>Acesso Negado</h2><button onclick='location.reload()' style='margin-top:20px; padding:10px 20px; cursor:pointer;'>Tentar Novamente</button></div>";
+                document.body.innerHTML = "<div style='text-align:center; margin-top:100px;'><h2>Acesso Negado</h2></div>";
                 return;
             }
             loadData();
         });
 
-        function loadData() {
-            const blockedLeads = JSON.parse(localStorage.getItem('bloqueados_leads')) || [];
+        async function loadData() {
             const tbody = document.getElementById('table-body');
             const emptyState = document.getElementById('empty-state');
             
-            tbody.innerHTML = '';
+            tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;">Lendo banco de dados Google...</td></tr>';
             
-            if (blockedLeads.length === 0) {
-                emptyState.style.display = 'block';
-                return;
-            } else {
-                emptyState.style.display = 'none';
-            }
-
-            blockedLeads.reverse();
-
-            blockedLeads.forEach((lead, index) => {
-                const nomesHtml = lead.nomes_tentados ? lead.nomes_tentados.join(' <br> ') : (lead.nome || '-');
-                const qtd = lead.tentativas || 1;
-                
-                const tr = document.createElement('tr');
-                tr.innerHTML = `
-                    <td>${nomesHtml}</td>
-                    <td>${lead.whatsapp}</td>
-                    <td><span style="background-color:#ffebee; color:#c62828; font-weight:700; padding:4px 8px; border-radius:12px;">${qtd}x</span></td>
-                    <td>${lead.dataTentativa}</td>
-                    <td>
-                        <button onclick="liberarNumero('${lead.whatsapp}')" style="background-color:#25D366; color:#fff; border:none; padding:6px 12px; border-radius:4px; font-weight:600; cursor:pointer;">Liberar Número</button>
-                        <button onclick="excluirRow(${index})" style="background:none; border:none; color:#D32F2F; margin-left:10px; cursor:pointer; font-weight:600; font-size:13px;">Remover do Histórico</button>
-                    </td>
-                `;
-                tbody.appendChild(tr);
-            });
-        }
-
-        function liberarNumero(whatsapp) {
-            if(confirm("Confirma que deseja liberar este número? Ele poderá acessar a página e baixar PDF novamente.")) {
-                
-                // 1. Vai nos saved_leads (banco de dados real) e seta liberado = true para quem tem esse Zap
-                let allLeads = JSON.parse(localStorage.getItem('saved_leads')) || [];
-                const apenasNumerosWa = whatsapp.replace(/\\D/g, '');
-                
-                allLeads = allLeads.map(l => {
-                    const limpo = l.whatsapp ? l.whatsapp.replace(/\\D/g, '') : '';
-                    if (limpo === apenasNumerosWa && l.status === 'Finalizado') {
-                        l.liberado = true; // Seta a TAG de passe livre!
-                    }
-                    return l;
+            try {
+                const snapshot = await db.collection("bloqueados").get();
+                let blockedLeads = [];
+                snapshot.forEach(doc => {
+                    blockedLeads.push({ uid: doc.id, ...doc.data() });
                 });
-                localStorage.setItem('saved_leads', JSON.stringify(allLeads));
-
-                // 2. Tira ele também do histórico de bloqueados na tela
-                let blockedLeads = JSON.parse(localStorage.getItem('bloqueados_leads')) || [];
-                blockedLeads = blockedLeads.filter(b => b.whatsapp.replace(/\\D/g, '') !== apenasNumerosWa);
-                localStorage.setItem('bloqueados_leads', JSON.stringify(blockedLeads));
                 
-                alert("Número Liberado com sucesso! O visitante já pode preencher o cadastro livremente.");
-                loadData();
-            }
-        }
+                tbody.innerHTML = '';
+                
+                if (blockedLeads.length === 0) {
+                    emptyState.style.display = 'block';
+                    return;
+                } else {
+                    emptyState.style.display = 'none';
+                }
 
-        function excluirRow(realIndexFromReversedId) {
-            // Remocao só do historico
-            if(confirm("Deseja apagar esse registro apenas deste histórico?")) {
-                let blockedLeads = JSON.parse(localStorage.getItem('bloqueados_leads')) || [];
-                blockedLeads.reverse(); // para bater o index
-                blockedLeads.splice(realIndexFromReversedId, 1);
                 blockedLeads.reverse();
-                localStorage.setItem('bloqueados_leads', JSON.stringify(blockedLeads));
+
+                blockedLeads.forEach(lead => {
+                    const nomesHtml = lead.nomes_tentados ? lead.nomes_tentados.join(' <br> ') : (lead.nome || '-');
+                    const qtd = lead.tentativas || 1;
+                    
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td>${nomesHtml}</td>
+                        <td>${lead.whatsapp}</td>
+                        <td><span style="background-color:#ffebee; color:#c62828; font-weight:700; padding:4px 8px; border-radius:12px;">${qtd}x</span></td>
+                        <td>${lead.dataTentativa}</td>
+                        <td>
+                            <button onclick="liberarNumero('${lead.whatsappLimpo}', '${lead.uid}')" style="background-color:#25D366; color:#fff; border:none; padding:6px 12px; border-radius:4px; font-weight:600; cursor:pointer;">Liberar Número</button>
+                            <button onclick="excluirRow('${lead.uid}')" style="background:none; border:none; color:#D32F2F; margin-left:10px; cursor:pointer; font-weight:600; font-size:13px;">Remover do Histórico</button>
+                        </td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            } catch(e) {
+                tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:red;">Falha de comunicação com o servidor Firebase.</td></tr>';
+            }
+        }
+
+        async function liberarNumero(whatsappLimpo, bloqueadoUid) {
+            if(confirm("Liberar esse número em todo o Brasil? Ele poderá acessar e baixar PDF novamente de qualquer navegador.")) {
+                try {
+                    // Update main leads DB to grant VIP flag
+                    const snapshot = await db.collection("leads").where("whatsappLimpo", "==", whatsappLimpo).where("status", "==", "Finalizado").get();
+                    snapshot.forEach(async (doc) => {
+                        await doc.ref.update({ liberado: true });
+                    });
+
+                    // Remove from blocked visualization
+                    await db.collection("bloqueados").doc(bloqueadoUid).delete();
+                    
+                    alert("Acesso liberado mundialmente com sucesso.");
+                    loadData();
+                } catch(e) {
+                    alert("Erro ao conectar no banco para liberar.");
+                }
+            }
+        }
+
+        async function excluirRow(uid) {
+            if(confirm("Deseja apagar esse registro apenas do histórico desta tela?")) {
+                await db.collection("bloqueados").doc(uid).delete();
                 loadData();
             }
         }
 
-        function clearAllBloqueados() {
-            if(confirm("ATENÇÃO: Você deseja apagar TODOS os registros que ficam amostra nesta tela?")) {
-                localStorage.removeItem('bloqueados_leads');
+        async function clearAllBloqueados() {
+            if(confirm("ATENÇÃO: Você deseja apagar TODOS os registros de tentativas fraudulentas da nuvem?")) {
+                const snapshot = await db.collection("bloqueados").get();
+                snapshot.forEach(doc => doc.ref.delete());
                 loadData();
             }
         }
 
-        function exportCSV() {
-            const blockedLeads = JSON.parse(localStorage.getItem('bloqueados_leads')) || [];
+        async function exportCSV() {
+            const snapshot = await db.collection("bloqueados").get();
+            let blockedLeads = [];
+            snapshot.forEach(doc => blockedLeads.push(doc.data()));
+
             if (blockedLeads.length === 0) {
                 alert('Nenhum dado para exportar.');
                 return;
@@ -169,13 +185,11 @@
 
             const universalBOM = "\uFEFF";
             const blob = new Blob([universalBOM + csvContent], { type: 'text/csv;charset=utf-8;' });
-            
             const link = document.createElement("a");
             const url = URL.createObjectURL(blob);
             link.setAttribute("href", url);
             link.setAttribute("download", `tentativas_bloqueadas_${new Date().getTime()}.csv`);
             link.style.visibility = 'hidden';
-            
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
