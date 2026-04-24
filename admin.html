@@ -30,11 +30,10 @@
 <body>
     <div class="admin-container">
         <div class="header-row">
-            <h1>Leads Capturados (Nuvem)</h1>
+            <h1>Leads Concluídos (Nuvem)</h1>
             <div style="display: flex; gap: 10px;">
-                <button onclick="clearAllData()" style="background-color: #D32F2F; color: #FFF; border: none; padding: 10px 20px; font-size: 14px; font-weight: 600; border-radius: 6px; cursor: pointer;">Limpar Tudo</button>
-                <button class="btn-export" style="background-color: #2E7D32;" onclick="exportCSV('finalizados')">Baixar Finalizados</button>
-                <button class="btn-export" style="background-color: #EF6C00;" onclick="exportCSV('incompletos')">Baixar Incompletos</button>
+                <button onclick="clearAllData()" style="background-color: #D32F2F; color: #FFF; border: none; padding: 10px 20px; font-size: 14px; font-weight: 600; border-radius: 6px; cursor: pointer;">Limpar da Tela</button>
+                <button class="btn-export" style="background-color: #2E7D32;" onclick="exportCSV()">Baixar Planilha Atual</button>
             </div>
         </div>
 
@@ -46,9 +45,8 @@
                         <th>WhatsApp</th>
                         <th>Situação Profissional</th>
                         <th>Interesse Principal</th>
-                        <th>Status</th>
                         <th>Data</th>
-                        <th>Ações</th>
+                        <th>Ações / Visibilidade</th>
                     </tr>
                 </thead>
                 <tbody id="table-body">
@@ -86,13 +84,17 @@
             const tbody = document.getElementById('table-body');
             const emptyState = document.getElementById('empty-state');
             
-            tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;">Conectando à base do Google Firebase...</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;">Conectando à base do Google Firebase...</td></tr>';
             
             try {
                 const snapshot = await db.collection("leads").get();
                 let leads = [];
                 snapshot.forEach(doc => {
-                    leads.push({ uid: doc.id, ...doc.data() });
+                    const data = doc.data();
+                    // Bloqueia quem não for Finalizado, e bloqueia quem já foi arquivado ("limpo")
+                    if (data.status === 'Finalizado' && data.arquivado !== true) {
+                        leads.push({ uid: doc.id, ...data });
+                    }
                 });
                 
                 tbody.innerHTML = '';
@@ -108,58 +110,60 @@
 
                 leads.forEach(lead => {
                     const tr = document.createElement('tr');
-                    const isFinalizado = lead.status === 'Finalizado';
-                    const statusClass = isFinalizado ? 'status-finalizado' : 'status-pendente';
                     tr.innerHTML = `
                         <td>${lead.nome || '-'}</td>
                         <td>${lead.whatsapp || '-'}</td>
                         <td>${lead.perfil || '-'}</td>
                         <td>${lead.assunto || '-'}</td>
-                        <td><span class="status-badge ${statusClass}">${lead.status}</span></td>
                         <td>${lead.dataUpdate || '-'}</td>
-                        <td><button onclick="deleteLead('${lead.uid}')" style="background:none; border:none; color:#D32F2F; cursor:pointer; font-weight:600; font-size:13px;">Excluir</button></td>
+                        <td><button onclick="deleteLead('${lead.uid}')" style="background:none; border:none; color:#D32F2F; cursor:pointer; font-weight:600; font-size:13px;">Ocultar</button></td>
                     `;
                     tbody.appendChild(tr);
                 });
             } catch (e) {
-                tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:red;">Erro de rede ou conexão com o banco.</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:red;">Erro de rede ou conexão com o banco.</td></tr>';
             }
         }
 
         async function deleteLead(uid) {
-            if(confirm("Tem certeza que deseja excluir permanentemente esse lead da nuvem?")) {
-                await db.collection("leads").doc(uid).delete();
+            if(confirm("Tem certeza que deseja ocultar esse lead da sua lista? (Ele continuará bloqueado para tentar de novo)")) {
+                await db.collection("leads").doc(uid).update({ arquivado: true });
                 loadData();
             }
         }
 
         async function clearAllData() {
-            if(confirm("ATENÇÃO PERMANENTE: Você vai apagar TODOS os leads de todos os dispositivos. Prossiga somente se já baixou a planilha. Deseja prosseguir?")) {
-                const snapshot = await db.collection("leads").get();
-                snapshot.forEach(doc => doc.ref.delete());
-                alert("Limpeza executada.");
+            if(confirm("ATENÇÃO: Você vai limpar a sua tela de Leads. O sistema guardará os números nos bastidores silenciosamente para manter a barreira de segurança funcionando. Deseja limpar a tela?")) {
+                const snapshot = await db.collection("leads").where("status", "==", "Finalizado").get();
+                snapshot.forEach(async doc => {
+                    const l = doc.data();
+                    if (l.arquivado !== true) {
+                        await doc.ref.update({ arquivado: true });
+                    }
+                });
+                alert("Limpeza visual executada.");
                 loadData();
             }
         }
 
-        async function exportCSV(type) {
+        async function exportCSV() {
             try {
-                let snapshot;
-                if (type === 'finalizados') {
-                    snapshot = await db.collection("leads").where("status", "==", "Finalizado").get();
-                } else {
-                    snapshot = await db.collection("leads").where("status", "==", "Não finalizado").get();
-                }
+                const snapshot = await db.collection("leads").where("status", "==", "Finalizado").get();
                 
                 let leads = [];
-                snapshot.forEach(doc => leads.push(doc.data()));
+                snapshot.forEach(doc => {
+                    const l = doc.data();
+                    if (l.arquivado !== true) {
+                        leads.push(l);
+                    }
+                });
 
                 if (leads.length === 0) {
-                    alert('Nenhum dado com esse filtro disponível no servidor.');
+                    alert('Nenhum lead aparecendo na tela para exportar.');
                     return;
                 }
 
-                let csvContent = "Nome;WhatsApp;Situacao Profissional;Interesse Principal;Status;Data\n";
+                let csvContent = "Nome;WhatsApp;Situacao Profissional;Interesse Principal;Data\n";
 
                 leads.forEach(lead => {
                     const row = [
@@ -167,7 +171,6 @@
                         `"${lead.whatsapp || ''}"`,
                         `"${lead.perfil || ''}"`,
                         `"${lead.assunto || ''}"`,
-                        `"${lead.status || ''}"`,
                         `"${lead.dataUpdate || ''}"`
                     ].join(";");
                     csvContent += row + "\n";
@@ -178,8 +181,7 @@
                 const link = document.createElement("a");
                 const url = URL.createObjectURL(blob);
                 link.setAttribute("href", url);
-                const fileName = type === 'finalizados' ? 'leads_COMPLETOS' : 'leads_INCOMPLETOS';
-                link.setAttribute("download", `${fileName}_${new Date().getTime()}.csv`);
+                link.setAttribute("download", `leads_COMPLETOS_${new Date().getTime()}.csv`);
                 link.style.visibility = 'hidden';
                 document.body.appendChild(link);
                 link.click();
