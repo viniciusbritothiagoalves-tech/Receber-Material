@@ -192,9 +192,8 @@ async function saveDataToFirebase(isFinal) {
     const perfilEl = document.querySelector('input[name="perfil"]:checked');
     const assuntoEl = document.querySelector('input[name="assunto"]:checked');
     
-    // Captura o ID do vídeo ou origem da URL, agora com suporte ao Google Campaign URL Builder
-    const urlParams = new URLSearchParams(window.location.search);
-    const origemVideo = urlParams.get('v') || urlParams.get('src') || urlParams.get('origem') || urlParams.get('utm_content') || urlParams.get('utm_source') || 'Direto/Linktree sem ID';
+    // Define a origem padrão (rastreamento via URL desativado a pedido)
+    const origemVideo = 'Direto/Linktree';
 
     const data = {
         nome: nome,
