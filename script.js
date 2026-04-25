@@ -192,8 +192,10 @@ async function saveDataToFirebase(isFinal) {
     const perfilEl = document.querySelector('input[name="perfil"]:checked');
     const assuntoEl = document.querySelector('input[name="assunto"]:checked');
     
-    // Define a origem padrão (rastreamento via URL desativado a pedido)
-    const origemVideo = 'Direto/Linktree';
+    // Captura a origem da URL (ex: ?origem=video_01 ou ?v=video_01)
+    const urlParams = new URLSearchParams(window.location.search);
+    const origemUrl = urlParams.get('origem') || urlParams.get('utm_source') || urlParams.get('v');
+    const origemVideo = origemUrl ? origemUrl : 'Direto/Linktree';
 
     const data = {
         nome: nome,
