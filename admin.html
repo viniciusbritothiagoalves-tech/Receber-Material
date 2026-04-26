@@ -32,6 +32,7 @@
         <div class="header-row">
             <h1>Leads Concluídos (Nuvem)</h1>
             <div style="display: flex; gap: 10px;">
+                <button onclick="toggleFiltroCompra()" id="btn-filtro-compra" style="background-color: #F57C00; color: #FFF; border: none; padding: 10px 20px; font-size: 14px; font-weight: 600; border-radius: 6px; cursor: pointer;">Ver quem NÃO comprou</button>
                 <button onclick="clearAllData()" style="background-color: #D32F2F; color: #FFF; border: none; padding: 10px 20px; font-size: 14px; font-weight: 600; border-radius: 6px; cursor: pointer;">Limpar da Tela</button>
                 <button class="btn-export" style="background-color: #2E7D32;" onclick="exportCSV()">Baixar Planilha Atual</button>
             </div>
@@ -46,6 +47,7 @@
                         <th>Situação Profissional</th>
                         <th>Interesse Principal</th>
                         <th>Origem (Vídeo)</th>
+                        <th>Status Compra</th>
                         <th>Data</th>
                         <th>Ações / Visibilidade</th>
                     </tr>
@@ -81,6 +83,30 @@
             loadData();
         });
 
+        let filterNaoComprou = false;
+
+        function toggleFiltroCompra() {
+            filterNaoComprou = !filterNaoComprou;
+            const btn = document.getElementById('btn-filtro-compra');
+            if (filterNaoComprou) {
+                btn.innerText = "Mostrar Todos";
+                btn.style.backgroundColor = "#1976D2";
+            } else {
+                btn.innerText = "Ver quem NÃO comprou";
+                btn.style.backgroundColor = "#F57C00";
+            }
+            loadData();
+        }
+
+        async function toggleCompra(uid, currentStatus) {
+            try {
+                await db.collection("leads").doc(uid).update({ comprou: !currentStatus });
+                loadData();
+            } catch (e) {
+                alert("Erro ao atualizar status de compra.");
+            }
+        }
+
         async function loadData() {
             const tbody = document.getElementById('table-body');
             const emptyState = document.getElementById('empty-state');
@@ -110,13 +136,25 @@
                 leads.reverse();
 
                 leads.forEach(lead => {
+                    if (filterNaoComprou && lead.comprou === true) return;
+
                     const tr = document.createElement('tr');
+                    
+                    const waLimpo = lead.whatsappLimpo || (lead.whatsapp ? lead.whatsapp.replace(/\\D/g, '') : '');
+                    const waLink = `https://wa.me/55${waLimpo}`;
+                    const whatsappCell = `<a href="${waLink}" target="_blank" style="color: #25D366; text-decoration: none; font-weight: 600;">${lead.whatsapp || '-'}</a>`;
+                    
+                    const comprouHtml = lead.comprou ? 
+                        `<span style="color: #2E7D32; font-weight: 600;">✅ Comprador</span> <br><button onclick="toggleCompra('${lead.uid}', true)" style="font-size:11px; margin-top:5px; cursor:pointer;">Desfazer</button>` : 
+                        `<span style="color: #EF6C00; font-weight: 600;">❌ Não comprou</span> <br><button onclick="toggleCompra('${lead.uid}', false)" style="font-size:11px; margin-top:5px; cursor:pointer; background-color:#25D366; color:white; border:none; border-radius:4px; padding:2px 5px;">Marcar Compra</button>`;
+
                     tr.innerHTML = `
                         <td>${lead.nome || '-'}</td>
-                        <td>${lead.whatsapp || '-'}</td>
+                        <td>${whatsappCell}</td>
                         <td>${lead.perfil || '-'}</td>
                         <td>${lead.assunto || '-'}</td>
                         <td>${lead.origem || '-'}</td>
+                        <td>${comprouHtml}</td>
                         <td>${lead.dataUpdate || '-'}</td>
                         <td><button onclick="deleteLead('${lead.uid}')" style="background:none; border:none; color:#D32F2F; cursor:pointer; font-weight:600; font-size:13px;">Ocultar</button></td>
                     `;
@@ -165,15 +203,17 @@
                     return;
                 }
 
-                let csvContent = "Nome;WhatsApp;Situacao Profissional;Interesse Principal;Origem;Data\n";
+                let csvContent = "Nome;WhatsApp;Situacao Profissional;Interesse Principal;Origem;Status Compra;Data\n";
 
                 leads.forEach(lead => {
+                    const statusCompraTexto = lead.comprou ? "Comprador" : "Não comprou";
                     const row = [
                         `"${lead.nome || ''}"`,
                         `"${lead.whatsapp || ''}"`,
                         `"${lead.perfil || ''}"`,
                         `"${lead.assunto || ''}"`,
                         `"${lead.origem || ''}"`,
+                        `"${statusCompraTexto}"`,
                         `"${lead.dataUpdate || ''}"`
                     ].join(";");
                     csvContent += row + "\n";

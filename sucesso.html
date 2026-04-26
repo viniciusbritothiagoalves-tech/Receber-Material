@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Compra Confirmada - Sucesso</title>
+    <!-- Firebase Cloud Servers Base Core -->
+    <script src="https://www.gstatic.com/firebasejs/10.9.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.9.0/firebase-firestore-compat.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+    <style>
+        .success-icon {
+            font-size: 64px;
+            color: var(--brand-green);
+            margin-bottom: 20px;
+        }
+        .success-title {
+            font-size: 28px;
+            font-weight: 700;
+            color: var(--text-main);
+            margin-bottom: 15px;
+        }
+        .success-text {
+            font-size: 18px;
+            color: #555;
+            margin-bottom: 30px;
+            line-height: 1.5;
+        }
+        .btn-whatsapp-group {
+            display: inline-block;
+            width: 100%;
+            padding: 18px;
+            font-size: 18px;
+            font-weight: 700;
+            color: #FFFFFF;
+            background-color: var(--brand-green);
+            border-radius: 8px;
+            text-decoration: none;
+            box-shadow: 0 4px 10px rgba(37, 211, 102, 0.3);
+            transition: background-color 0.3s, transform 0.1s;
+            margin-bottom: 20px;
+        }
+        .btn-whatsapp-group:hover {
+            background-color: var(--brand-green-hover);
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container text-center">
+        <div class="success-icon">✔️</div>
+        <h1 class="success-title">Compra Aprovada!</h1>
+        <p class="success-text">Sua colaboração foi confirmada com sucesso. Obrigado por dar esse passo importante.</p>
+        
+        <p class="success-text">Para entrar no <strong>Grupo Exclusivo no WhatsApp</strong>, clique no botão abaixo e me mande uma mensagem. Eu mesmo vou te adicionar lá!</p>
+
+        <a href="https://wa.me/5531999990762?text=Olá!%20Efetuei%20a%20compra%20e%20quero%20entrar%20no%20grupo%20exclusivo." class="btn-whatsapp-group" target="_blank">
+            Entrar no Grupo WhatsApp
+        </a>
+    </div>
+
+    <script>
+        // Inicializa Firebase
+        const firebaseConfig = {
+            apiKey: "AIza" + "SyCsX45PPj_PZ" + "U8_FkybSWEv4" + "4IUo3SvLQc",
+            authDomain: "contatos---pesquisa-yt.firebaseapp.com",
+            projectId: "contatos---pesquisa-yt",
+            storageBucket: "contatos---pesquisa-yt.firebasestorage.app",
+            messagingSenderId: "826368789470",
+            appId: "1:826368789470:web:a2638727e55a9af8736b4f"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+
+        // Atualiza status de compra no banco de dados automaticamente
+        document.addEventListener("DOMContentLoaded", async () => {
+            const sessionId = localStorage.getItem('lead_session');
+            if (sessionId) {
+                try {
+                    await db.collection("leads").doc(sessionId).set({
+                        comprou: true,
+                        dataCompra: new Date().toLocaleString('pt-BR')
+                    }, { merge: true });
+                    console.log("Status de compra atualizado com sucesso.");
+                } catch(e) {
+                    console.error("Erro ao atualizar compra: ", e);
+                }
+            }
+        });
+    </script>
+</body>
+</html>

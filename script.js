@@ -17,6 +17,7 @@ let currentSessionId = null;
 function initSessionId() {
     if (!currentSessionId) {
         currentSessionId = 'lead_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+        localStorage.setItem('lead_session', currentSessionId);
     }
 }
 
@@ -205,6 +206,7 @@ async function saveDataToFirebase(isFinal) {
         assunto: assuntoEl ? assuntoEl.value : '',
         origem: origemVideo,
         status: isFinal ? 'Finalizado' : 'Não finalizado',
+        comprou: false,
         dataUpdate: new Date().toLocaleString('pt-BR')
     };
 
@@ -257,10 +259,22 @@ function finalizeLead(event) {
     
     const urlPdf = document.getElementById('download-btn').href;
     
+    // 1. Mostrar a tela de upsell
+    showUpsellScreen();
+    
+    // 2. Disparar o download via tag A escondida (inicia automático sem sair da página)
+    const a = document.createElement('a');
+    a.href = urlPdf;
+    a.target = '_blank';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    
     // Assegura carimbo FINISHED oficial na nuvem!
-    saveDataToFirebase(true).then(() => {
-        window.location.href = urlPdf;
-    }).catch(() => {
-        window.location.href = urlPdf;
-    });
+    saveDataToFirebase(true);
+}
+
+function showUpsellScreen() {
+    document.getElementById('final-screen').style.display = 'none';
+    document.getElementById('upsell-screen').style.display = 'block';
 }

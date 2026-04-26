@@ -97,9 +97,6 @@
                             <label class="radio-option">
                                 <input type="radio" name="assunto" value="Vida familiar"> Vida familiar
                             </label>
-                            <label class="radio-option">
-                                <input type="radio" name="assunto" value="Cuidados com documentos e contas"> Cuidados com documentos e contas
-                            </label>
                         </div>
                         <div class="error-msg" id="error-assunto">Selecione o assunto de maior interesse.</div>
                     </div>
@@ -112,6 +109,59 @@
             <h2>Seu material está pronto para ser recebido.</h2>
             <p>Clique no botão abaixo para baixar agora.</p>
             <a href="https://drive.google.com/uc?export=download&id=1rvfnPsV_uRfjqqXm61EZzSQWL1H1T2pJ" class="btn btn-download" id="download-btn" onclick="finalizeLead(event)">Receber material agora</a>
+        </div>
+
+        <div id="upsell-screen" style="display: none;">
+            <!-- SEÇÃO 1 — DOWNLOAD -->
+            <div class="upsell-section text-center">
+                <h2 class="upsell-title">Seu material já está sendo baixado.</h2>
+                <h3 class="upsell-subtitle">Enquanto ele chega até você, existe algo que pode ajudar ainda mais no seu dia a dia.</h3>
+                <p class="upsell-text">Muitas pessoas que receberam este material perceberam que pequenas orientações contínuas fazem toda a diferença para manter a mente ativa, o dia mais organizado e a rotina mais leve.</p>
+            </div>
+
+            <!-- SEÇÃO 2 — VENDA DO FUTURO -->
+            <div class="upsell-card mt-4">
+                <h2 class="card-title">Imagine viver seus dias com mais clareza, tranquilidade e segurança.</h2>
+                <p class="upsell-text">Imagine lembrar com mais facilidade das coisas importantes do dia a dia, manter a mente ativa e sentir mais confiança para lidar com tarefas simples da rotina.</p>
+                <p class="upsell-text">Imagine acordar sabendo que existe um grupo preparado para enviar orientações práticas, lembretes úteis e conteúdos que ajudam a manter o bem-estar e a organização mental.</p>
+                <p class="upsell-text">É isso que muitas pessoas estão construindo todos os dias com pequenas ações simples.</p>
+            </div>
+
+            <!-- SEÇÃO 3 — O QUE É O GRUPO -->
+            <div class="upsell-section mt-4 text-center">
+                <h2 class="card-title">Um grupo privado criado para ajudar você todos os meses.</h2>
+                <p class="upsell-text">Este é um grupo reservado no WhatsApp, onde você receberá conteúdos organizados para ajudar no seu dia a dia.</p>
+                <p class="upsell-text">Tudo de forma simples, clara e fácil de acompanhar.</p>
+                <ul class="beneficios-list text-left">
+                    <li>Orientações práticas enviadas regularmente</li>
+                    <li>Conteúdos que ajudam a manter a mente ativa</li>
+                    <li>Dicas simples para facilitar a rotina</li>
+                    <li>Lembretes úteis para o dia a dia</li>
+                    <li>Conteúdos pensados para facilitar a vida real</li>
+                </ul>
+            </div>
+
+            <!-- SEÇÃO 4 — CONTRASTE DE VALOR -->
+            <div class="upsell-section mt-4 text-center highlight-box">
+                <p class="upsell-text">Normalmente, conteúdos organizados e acompanhamento contínuo como este poderiam custar muito mais.</p>
+                <p class="upsell-text">Mas a proposta aqui é permitir que qualquer pessoa possa participar e receber esse apoio de forma acessível.</p>
+            </div>
+
+            <!-- SEÇÃO 5, 6 e 7 — OFERTA, CTA, REFORÇO -->
+            <div class="upsell-card text-center highlight-border mt-4">
+                <h2 class="card-title">Participe por uma colaboração simbólica mensal.</h2>
+                <p class="upsell-text">Para manter a organização dos conteúdos e o funcionamento do grupo, é solicitado apenas uma pequena colaboração mensal.</p>
+                <div class="price-box">R$ 9,90 <span class="price-period">por mês</span></div>
+                <p class="small-text mb-4">Um valor simples, pensado para ser acessível e permitir que você continue recebendo conteúdos úteis todos os meses.</p>
+                
+                <a href="https://buy.stripe.com/6oU9AS2AM12j8HHe2v1VK0n" class="btn btn-whatsapp mb-4">Quero participar do grupo agora</a>
+                
+                <div class="reforco-final mt-4">
+                    <p class="upsell-text">Você não precisa fazer tudo sozinho(a).</p>
+                    <p class="upsell-text">Com pequenas orientações contínuas, muitos desafios do dia a dia se tornam mais leves e organizados.</p>
+                    <p class="upsell-text">Se fizer sentido para você, o acesso está disponível logo acima.</p>
+                </div>
+            </div>
         </div>
 
         <div class="footer-text">
