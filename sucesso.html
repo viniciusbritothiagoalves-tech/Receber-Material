@@ -76,12 +76,20 @@
         // Atualiza status de compra no banco de dados automaticamente
         document.addEventListener("DOMContentLoaded", async () => {
             const sessionId = localStorage.getItem('lead_session');
+            const isRecovery = localStorage.getItem('is_recovery');
+            
             if (sessionId) {
                 try {
-                    await db.collection("leads").doc(sessionId).set({
+                    const updateData = {
                         comprou: true,
                         dataCompra: new Date().toLocaleString('pt-BR')
-                    }, { merge: true });
+                    };
+                    
+                    if (isRecovery === 'true') {
+                        updateData.comprouTentandoRecompensa = true;
+                    }
+
+                    await db.collection("leads").doc(sessionId).set(updateData, { merge: true });
                     console.log("Status de compra atualizado com sucesso.");
                 } catch(e) {
                     console.error("Erro ao atualizar compra: ", e);

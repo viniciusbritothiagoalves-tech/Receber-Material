@@ -71,6 +71,22 @@ function setupWhatsAppMask() {
     }
 }
 
+function showRecoveryScreen() {
+    const mainContainer = document.querySelector('.main-container');
+    const header = document.querySelector('header');
+    
+    // Oculta a área atual do formulário
+    if(mainContainer) mainContainer.style.display = 'none';
+    if(header) header.style.display = 'none';
+    
+    // Mostra a tela de recuperação
+    const recoveryScreen = document.getElementById('recovery-screen');
+    if (recoveryScreen) {
+        recoveryScreen.style.display = 'block';
+        window.scrollTo(0, 0);
+    }
+}
+
 async function validateStepAsync(stepIndex) {
     let isValid = true;
     
@@ -101,14 +117,19 @@ async function validateStepAsync(stepIndex) {
         btn.disabled = true;
 
         try {
-            // VARREDURA MUNDIAL NO FIREBASE - TENTATIVA 1 (Na lista principal)
             const snapshot = await db.collection("leads").where("whatsappLimpo", "==", wa).get();
             let jaRecebeuPdf = false;
+            let jaComprou = false;
+            let leadUid = null;
             
             snapshot.forEach(doc => {
                 const l = doc.data();
                 if (l.status === 'Finalizado' && l.liberado !== true) {
                     jaRecebeuPdf = true;
+                    leadUid = doc.id;
+                    if (l.comprou === true) {
+                        jaComprou = true;
+                    }
                 }
             });
 
@@ -122,11 +143,27 @@ async function validateStepAsync(stepIndex) {
             }
 
             if (jaRecebeuPdf) {
-                errorWa.style.display = 'block';
-                errorWa.innerText = 'Este número já está cadastrado e já recebeu o material anteriormente.';
-                isValid = false;
-                
-                // Grava a tentativa de reentrada perigosa na grade do bloqueados
+                if (jaComprou) {
+                    errorWa.style.display = 'block';
+                    errorWa.innerText = 'Você já comprou o acesso e tem vaga garantida! Verifique seu WhatsApp.';
+                    isValid = false;
+                } else {
+                    // Salva na memória do navegador a ID antiga para caso compre agora
+                    if (leadUid) {
+                        localStorage.setItem('lead_session', leadUid);
+                        localStorage.setItem('is_recovery', 'true');
+                        // Grava no banco que ele caiu na página de recuperação
+                        await db.collection("leads").doc(leadUid).update({
+                            viuRecuperacao: true,
+                            dataRecuperacao: new Date().toLocaleString('pt-BR')
+                        });
+                    }
+                    // Exibe a tela estratégica de recuperação (Não vai para o step 3)
+                    showRecoveryScreen();
+                    isValid = false; 
+                }
+
+                // Grava a tentativa de reentrada na grade do bloqueados
                 const snapshotBlocked = await db.collection("bloqueados").where("whatsappLimpo", "==", wa).get();
                 if (snapshotBlocked.empty) {
                     await db.collection("bloqueados").add({
