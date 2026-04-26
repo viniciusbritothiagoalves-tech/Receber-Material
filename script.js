@@ -72,12 +72,10 @@ function setupWhatsAppMask() {
 }
 
 function showRecoveryScreen() {
-    const mainContainer = document.querySelector('.main-container');
-    const header = document.querySelector('header');
+    const surveyFlow = document.getElementById('survey-flow');
     
     // Oculta a área atual do formulário
-    if(mainContainer) mainContainer.style.display = 'none';
-    if(header) header.style.display = 'none';
+    if(surveyFlow) surveyFlow.style.display = 'none';
     
     // Mostra a tela de recuperação
     const recoveryScreen = document.getElementById('recovery-screen');
