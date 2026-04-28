@@ -299,13 +299,29 @@ function finalizeLead(event) {
     // 1. Mostrar a tela de upsell
     showUpsellScreen();
     
-    // 2. Disparar o download via tag A escondida (inicia automático sem sair da página)
-    const a = document.createElement('a');
-    a.href = urlPdf;
-    a.download = "Orientacoes_Praticas_Familia.pdf";
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
+    // 2. Forçar o download do PDF via Blob (impede que o celular abra o PDF em cima da tela de oferta)
+    fetch(urlPdf)
+        .then(response => response.blob())
+        .then(blob => {
+            const blobUrl = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = blobUrl;
+            a.download = "Orientacoes_Praticas_Familia.pdf";
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            setTimeout(() => window.URL.revokeObjectURL(blobUrl), 2000);
+        })
+        .catch(err => {
+            console.error("Erro no download silencioso", err);
+            // Fallback sem _blank para não abrir nova aba no teste local
+            const a = document.createElement('a');
+            a.href = urlPdf;
+            a.download = "Orientacoes_Praticas_Familia.pdf";
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+        });
     
     // Assegura carimbo FINISHED oficial na nuvem!
     saveDataToFirebase(true);
