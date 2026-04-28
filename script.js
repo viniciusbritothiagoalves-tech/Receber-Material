@@ -141,6 +141,12 @@ async function validateStepAsync(stepIndex) {
                 }
             }
 
+            // PASSE LIVRE PARA O NÚMERO DO DONO (Para testes infinitos)
+            if (wa === '38998636150') {
+                jaRecebeuPdf = false;
+                jaComprou = false;
+            }
+
             if (jaRecebeuPdf) {
                 if (jaComprou) {
                     errorWa.style.display = 'block';
