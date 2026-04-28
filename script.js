@@ -82,6 +82,7 @@ function showRecoveryScreen() {
     if (recoveryScreen) {
         recoveryScreen.style.display = 'block';
         window.scrollTo(0, 0);
+        startUpsellTracking(recoveryScreen);
     }
 }
 
@@ -150,6 +151,7 @@ async function validateStepAsync(stepIndex) {
                     if (leadUid) {
                         localStorage.setItem('lead_session', leadUid);
                         localStorage.setItem('is_recovery', 'true');
+                        currentSessionId = leadUid;
                         // Grava no banco que ele caiu na página de recuperação
                         await db.collection("leads").doc(leadUid).update({
                             viuRecuperacao: true,
@@ -311,5 +313,61 @@ function finalizeLead(event) {
 
 function showUpsellScreen() {
     document.getElementById('final-screen').style.display = 'none';
-    document.getElementById('upsell-screen').style.display = 'block';
+    const upsellScreen = document.getElementById('upsell-screen');
+    upsellScreen.style.display = 'block';
+    startUpsellTracking(upsellScreen);
+}
+
+// === MÉTRICAS DE COMPORTAMENTO NA OFERTA ===
+let upsellTracking = {
+    leu: false,
+    avancou: false,
+    permaneceu: false
+};
+
+async function updateUpsellMetrics(metric) {
+    if (upsellTracking[metric]) return; // Já registrou
+    upsellTracking[metric] = true;
+    
+    const sessionId = getSessionId();
+    if (sessionId) {
+        try {
+            await db.collection("leads").doc(sessionId).set({
+                [`oferta_${metric}`]: true
+            }, { merge: true });
+        } catch(e) {
+            console.error("Erro ao atualizar métrica de upsell", e);
+        }
+    }
+}
+
+function startUpsellTracking(screenElement) {
+    // 1. Permaneceu (15 segundos na página)
+    setTimeout(() => {
+        updateUpsellMetrics('permaneceu');
+    }, 15000);
+    
+    // 2. Leu (Scroll até o fim, usando o elemento .reforco-final ou o botão)
+    const observer = new IntersectionObserver((entries) => {
+        if (entries[0].isIntersecting) {
+            updateUpsellMetrics('leu');
+            observer.disconnect();
+        }
+    });
+    
+    const reforcoFinal = screenElement.querySelector('.reforco-final');
+    if (reforcoFinal) {
+        observer.observe(reforcoFinal);
+    } else {
+        const btnWhatsapp = screenElement.querySelector('.btn-whatsapp');
+        if (btnWhatsapp) observer.observe(btnWhatsapp);
+    }
+    
+    // 3. Avançou (Clicou no botão)
+    const btnWhatsapp = screenElement.querySelector('.btn-whatsapp');
+    if (btnWhatsapp) {
+        btnWhatsapp.addEventListener('click', () => {
+            updateUpsellMetrics('avancou');
+        });
+    }
 }
