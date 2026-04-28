@@ -314,6 +314,27 @@ function finalizeLead(event) {
 function showUpsellScreen() {
     document.getElementById('final-screen').style.display = 'none';
     const upsellScreen = document.getElementById('upsell-screen');
+    
+    // Conecta a dor relatada com a cópia (Tudo é comprado duas vezes)
+    const assuntoEl = document.querySelector('input[name="assunto"]:checked');
+    const dorDinamicaEl = document.getElementById('dor-dinamica');
+    if (assuntoEl && dorDinamicaEl) {
+        const assunto = assuntoEl.value;
+        let textoDor = "lidar com seus maiores desafios";
+        
+        if (assunto === "Evitar conflitos em casa") {
+            textoDor = "manter a paz e evitar os conflitos na sua casa";
+        } else if (assunto === "Saúde e imprevistos") {
+            textoDor = "lidar com preocupações de saúde e imprevistos";
+        } else if (assunto === "Orientar os filhos/netos") {
+            textoDor = "proteger e orientar seus filhos e netos";
+        } else if (assunto === "Paz espiritual e mental") {
+            textoDor = "encontrar paz espiritual e aliviar o cansaço mental";
+        }
+        
+        dorDinamicaEl.innerText = textoDor;
+    }
+
     upsellScreen.style.display = 'block';
     startUpsellTracking(upsellScreen);
 }
