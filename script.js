@@ -302,7 +302,7 @@ function finalizeLead(event) {
     // 2. Disparar o download via tag A escondida (inicia automático sem sair da página)
     const a = document.createElement('a');
     a.href = urlPdf;
-    a.target = '_blank';
+    a.download = "Orientacoes_Praticas_Familia.pdf";
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
